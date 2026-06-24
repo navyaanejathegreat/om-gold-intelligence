@@ -4,11 +4,14 @@ import pandas as pd
 print("Downloading market data...")
 
 tickers = {
-    "Gold": "GOLDBEES.NS",
+    "Gold": "GC=F",
     "Silver": "SI=F",
     "Oil": "CL=F",
-    "Nifty": "^NSEI",
-    "VIX": "^INDIAVIX"
+    "SP500": "^GSPC",
+    "VIX": "^VIX",
+    "TNX": "^TNX",
+    "DXY": "DX-Y.NYB",
+    "USDINR": "INR=X"
 }
 
 dataframes = []

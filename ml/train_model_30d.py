@@ -7,7 +7,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
-    r2_score
+    r2_score,
+    mean_absolute_percentage_error
 )
 
 from xgboost import XGBRegressor
@@ -25,67 +26,42 @@ data_path = os.path.join(
 )
 
 df = pd.read_csv(data_path)
-
-# ==========================
-# DATE FILTER
-# ==========================
-
-df["Date"] = pd.to_datetime(
-    df["Date"]
-)
+df["Date"] = pd.to_datetime(df["Date"])
 
 df = df[
     df["Date"] >= "2022-01-01"
 ]
 
-print("\nAfter Date Filter:")
-print(df.shape)
 
-# ==========================
-# OUTLIER REMOVAL
-# ==========================
+
+# ==================================
+# REMOVE EXTREME OUTLIERS
+# ==================================
 
 print("\nOriginal Shape:")
 print(df.shape)
 
-df = df[
-    (df["Target_1D"] > -0.20) &
-    (df["Target_1D"] < 0.20)
-]
-
-print("\nShape After Outlier Removal:")
-print(df.shape)
-
-print("\nLargest Targets:")
-
 print(
     df[
-        ["Date", "Gold", "Target_1D"]
+        ["Gold", "Target_7D"]
+    ].head()
+)
+
+print("\nLargest 7D Targets:")
+print(
+    df[
+        ["Date", "Gold", "Target_7D"]
     ]
     .sort_values(
-        "Target_1D",
+        "Target_7D",
         ascending=False
     )
     .head(10)
 )
 
-print("\nDataset Info:")
-print(df.shape)
-
-print(
-    df[
-        ["Gold", "Target_1D"]
-    ].head(10)
-)
-
-print("\nTarget Statistics:")
-print(
-    df["Target_1D"].describe()
-)
-
-# ==========================
+# ==================================
 # FEATURES
-# ==========================
+# ==================================
 
 X = df.drop(
     columns=[
@@ -96,19 +72,14 @@ X = df.drop(
     ]
 )
 
-y = df["Target_1D"]
+# ==================================
+# TARGET
+# ==================================
 
-print("\nAny NaNs?")
-print(
-    X.isna().sum().sum()
-)
+y = df["Target_30D"]
 
-print("\nShape:")
-print(X.shape)
-
-print("\n====================")
-print("TARGET DEBUG")
-print("====================")
+print("\nTarget Statistics:")
+print(y.describe())
 
 print("\nUnique Targets:")
 print(y.nunique())
@@ -116,15 +87,15 @@ print(y.nunique())
 print("\nTarget Std:")
 print(y.std())
 
-print("\nTarget Range:")
-print(
-    y.min(),
-    y.max()
-)
+print("\nAny NaNs?")
+print(X.isna().sum().sum())
 
-# ==========================
+print("\nShape:")
+print(X.shape)
+
+# ==================================
 # TRAIN TEST SPLIT
-# ==========================
+# ==================================
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -139,17 +110,11 @@ print(X_train.shape)
 print("\nTest Shape:")
 print(X_test.shape)
 
-print("\nTrain Target:")
-print(y_train.describe())
-
-print("\nTest Target:")
-print(y_test.describe())
-
-# ==========================
+# ==================================
 # MODEL
-# ==========================
+# ==================================
 
-print("\nTraining Model...")
+print("\nTraining 7 Day Model...")
 
 model = XGBRegressor(
     n_estimators=500,
@@ -168,9 +133,9 @@ model.fit(
     y_train
 )
 
-# ==========================
+# ==================================
 # PREDICTIONS
-# ==========================
+# ==================================
 
 predictions = model.predict(
     X_test
@@ -186,14 +151,9 @@ print(
     comparison.head(20)
 )
 
-print("\nLast 20 Predictions:")
-print(
-    comparison.tail(20)
-)
-
-# ==========================
+# ==================================
 # METRICS
-# ==========================
+# ==================================
 
 mae = mean_absolute_error(
     y_test,
@@ -224,11 +184,21 @@ direction_accuracy = (
     (
         direction_actual ==
         direction_pred
-    ).mean()
+    )
+    .mean()
+)
+mape = mean_absolute_percentage_error(
+    y_test,
+    predictions
 )
 
-print("\nDirection Accuracy:")
+
+print("\n===================")
+print("7 DAY RESULTS")
+print("===================")
+
 print(
+    f"\nDirection Accuracy: "
     f"{direction_accuracy * 100:.2f}%"
 )
 confidence_score = round(
@@ -264,19 +234,24 @@ print(
     f"Confidence Score: "
     f"{confidence_score}"
 )
+print(
+    f"\nMAE: {mae}"
+)
 
-print("\nMean Absolute Error:")
-print(mae)
+print(
+    f"\nRMSE: {rmse}"
+)
 
-print("\nRMSE:")
-print(rmse)
+print(
+    f"\nR2 Score: {r2}"
+)
+print(
+    f"\nMAPE: {mape * 100:.2f}%"
+)
 
-print("\nR2 Score:")
-print(r2)
-
-# ==========================
+# ==================================
 # FEATURE IMPORTANCE
-# ==========================
+# ==================================
 
 importance = pd.DataFrame({
     "Feature": X.columns,
@@ -289,14 +264,14 @@ importance = importance.sort_values(
     ascending=False
 )
 
-print("\nTop 15 Features:")
+print("\nTop 10 Features:")
 print(
-    importance.head(15)
+    importance.head(10)
 )
 
-# ==========================
-# TOMORROW PREDICTION
-# ==========================
+# ==================================
+# NEXT 7 DAY FORECAST
+# ==================================
 
 latest_features = X.tail(1)
 
@@ -314,50 +289,28 @@ predicted_price = (
     (1 + predicted_return)
 )
 
-lower_price = (
-    current_price *
-    (1 + predicted_return - mae)
-)
-
-upper_price = (
-    current_price *
-    (1 + predicted_return + mae)
-)
-
-print("\n======================")
-print("TOMORROW PREDICTION")
-print("======================")
+print("\n===================")
+print("7 DAY FORECAST")
+print("===================")
 
 print(
-    f"Current Gold Price: {current_price:.2f}"
+    f"Current Price: "
+    f"{current_price:.2f}"
 )
 
 print(
-    f"Predicted Change: {predicted_return * 100:.2f}%"
+    f"Predicted 7D Change: "
+    f"{predicted_return * 100:.2f}%"
 )
 
 print(
-    f"Predicted Tomorrow Price: {predicted_price:.2f}"
+    f"Predicted 7D Price: "
+    f"{predicted_price:.2f}"
 )
 
-print(
-    f"Confidence Range: "
-    f"{lower_price:.2f} - {upper_price:.2f}"
-)
-
-print("\nPrediction Statistics:")
-print(
-    pd.Series(predictions).describe()
-)
-
-print("\nActual Statistics:")
-print(
-    y_test.describe()
-)
-
-# ==========================
+# ==================================
 # SAVE MODEL
-# ==========================
+# ==================================
 
 model_dir = os.path.join(
     BASE_DIR,
@@ -371,7 +324,7 @@ os.makedirs(
 
 model_path = os.path.join(
     model_dir,
-    "gold_model.pkl"
+    "gold_model_30d.pkl"
 )
 
 joblib.dump(
@@ -379,7 +332,7 @@ joblib.dump(
     model_path
 )
 
-print("\nModel Saved!")
+print("\n7 Day Model Saved!")
 metrics = {
     "mae": float(mae),
     "rmse": float(rmse),
@@ -394,6 +347,6 @@ joblib.dump(
     metrics,
     os.path.join(
         model_dir,
-        "metrics_1d.pkl"
+        "metrics_30d.pkl"
     )
 )

@@ -7,16 +7,17 @@ import os
 
 app = Flask(__name__)
 
-CORS(
-    app,
-    resources={r"/*": {"origins": "*"}}
-)
+CORS(app)
 
 BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
 )
 
-model = joblib.load(
+# ==========================
+# LOAD MODELS
+# ==========================
+
+model_1d = joblib.load(
     os.path.join(
         BASE_DIR,
         "models",
@@ -24,13 +25,59 @@ model = joblib.load(
     )
 )
 
-# Model metrics from training
-HISTORICAL_MAE = 0.77
-DIRECTION_ACCURACY = 51.11
+model_7d = joblib.load(
+    os.path.join(
+        BASE_DIR,
+        "models",
+        "gold_model_7d.pkl"
+    )
+)
+
+model_30d = joblib.load(
+    os.path.join(
+        BASE_DIR,
+        "models",
+        "gold_model_30d.pkl"
+    )
+)
+
+# ==========================
+# METRICS
+# ==========================
+
+MAE_1D = 1.57
+ACC_1D = 41.82
+
+MAE_7D = 4.15
+ACC_7D = 47.27
+
+MAE_30D = 8.60
+ACC_30D = 40.45
 
 
-@app.route("/predict")
-def predict():
+# ==========================
+# CONFIDENCE LABEL
+# ==========================
+
+def confidence_label(acc):
+
+    if acc >= 70:
+        return "High"
+
+    elif acc >= 55:
+        return "Moderate"
+
+    elif acc >= 45:
+        return "Low"
+
+    return "Very Low"
+
+
+# ==========================
+# LOAD DATA
+# ==========================
+
+def load_data():
 
     df = pd.read_csv(
         os.path.join(
@@ -39,66 +86,310 @@ def predict():
             "features.csv"
         )
     )
+    print("\nCOLUMNS:")
+    print(df.columns.tolist())
 
-    latest_features = df.drop(
-        columns=["Date", "Target"]
-    ).tail(1)
+    return df
 
-    current_price = df[
-        "Gold"
-    ].iloc[-1]
 
-    predicted_change = model.predict(
-        latest_features
-    )[0]
+# ==========================
+# PREP FEATURES
+# ==========================
 
-    predicted_price = (
-        current_price *
-        (1 + predicted_change)
+def get_features(df):
+
+    return df.drop(
+        columns=[
+            "Date",
+            "Target_1D",
+            "Target_7D",
+            "Target_30D"
+        ],
+        errors="ignore"
+    )
+    
+
+# ==========================
+# PREDICT
+# ==========================
+
+@app.route("/predict")
+def predict():
+
+    df = load_data()
+    print("\nCOLUMNS:")
+    print(df.columns.tolist())
+
+    X = get_features(df)
+
+    latest = X.tail(1)
+
+    current_usd = float(
+        df["Gold"].iloc[-1]
     )
 
-    lower_price = (
-        predicted_price *
-        (1 - HISTORICAL_MAE / 100)
+    usd_inr = float(
+        df["USDINR"].iloc[-1]
     )
 
-    upper_price = (
-        predicted_price *
-        (1 + HISTORICAL_MAE / 100)
+    current_inr = (
+        current_usd *
+        usd_inr *
+        10 /
+        31.1035
     )
+
+    pred_1d = float(
+        model_1d.predict(latest)[0]
+    )
+
+    pred_7d = float(
+        model_7d.predict(latest)[0]
+    )
+
+    pred_30d = float(
+        model_30d.predict(latest)[0]
+    )
+
+    price_1d = current_usd * (1 + pred_1d)
+    price_7d = current_usd * (1 + pred_7d)
+    price_30d = current_usd * (1 + pred_30d)
 
     return jsonify({
-        "currentPrice": round(
-            float(current_price),
-            2
-        ),
 
-        "predictedPrice": round(
-            float(predicted_price),
-            2
-        ),
+        "currentPriceUSD":
+            round(current_usd, 2),
 
-        "predictedChange": round(
-            float(predicted_change * 100),
-            2
-        ),
+        "currentPriceINR":
+            round(current_inr, 2),
 
-        "lowerBound": round(
-            float(lower_price),
-            2
-        ),
+        "usdInr":
+            round(usd_inr, 2),
 
-        "upperBound": round(
-            float(upper_price),
-            2
-        ),
+        "prediction1D": {
+            "change":
+                round(pred_1d * 100, 2),
 
-        "mae": HISTORICAL_MAE,
+            "priceUSD":
+                round(price_1d, 2),
 
-        "directionAccuracy":
-            DIRECTION_ACCURACY
+            "priceINR":
+                round(
+                    price_1d *
+                    usd_inr *
+                    10 /
+                    31.1035,
+                    2
+                ),
+
+            "accuracy":
+                ACC_1D,
+
+            "confidence":
+                confidence_label(
+                    ACC_1D
+                )
+        },
+
+        "prediction7D": {
+            "change":
+                round(pred_7d * 100, 2),
+
+            "priceUSD":
+                round(price_7d, 2),
+
+            "priceINR":
+                round(
+                    price_7d *
+                    usd_inr *
+                    10 /
+                    31.1035,
+                    2
+                ),
+
+            "accuracy":
+                ACC_7D,
+
+            "confidence":
+                confidence_label(
+                    ACC_7D
+                )
+        },
+
+        "prediction30D": {
+            "change":
+                round(pred_30d * 100, 2),
+
+            "priceUSD":
+                round(price_30d, 2),
+
+            "priceINR":
+                round(
+                    price_30d *
+                    usd_inr *
+                    10 /
+                    31.1035,
+                    2
+                ),
+
+            "accuracy":
+                ACC_30D,
+
+            "confidence":
+                confidence_label(
+                    ACC_30D
+                )
+        }
+    })
+
+
+# ==========================
+# FORECAST
+# ==========================
+
+@app.route("/forecast/<int:days>")
+def forecast(days):
+
+    df = load_data()
+
+    X = get_features(df)
+
+    latest = X.tail(1)
+
+    current_price = float(
+        df["Gold"].iloc[-1]
+    )
+
+    usd_inr = float(
+        df["USDINR"].iloc[-1]
+    )
+
+    if days <= 7:
+        model = model_7d
+    else:
+        model = model_30d
+
+    predicted_return = float(
+        model.predict(latest)[0]
+    )
+
+    forecast_data = []
+
+    for day in range(1, days + 1):
+
+        step_return = (
+            predicted_return /
+            max(days, 1)
+        )
+
+        current_price *= (
+            1 + step_return
+        )
+
+        forecast_data.append({
+
+            "day": day,
+
+            "priceUSD":
+                round(
+                    current_price,
+                    2
+                ),
+
+            "priceINR":
+                round(
+                    current_price *
+                    usd_inr *
+                    10 /
+                    31.1035,
+                    2
+                )
+        })
+
+    prices = [
+        x["priceUSD"]
+        for x in forecast_data
+    ]
+
+    return jsonify({
+
+        "forecast":
+            forecast_data,
+
+        "minPrice":
+            round(
+                min(prices),
+                2
+            ),
+
+        "maxPrice":
+            round(
+                max(prices),
+                2
+            ),
+
+        "averagePrice":
+            round(
+                sum(prices) /
+                len(prices),
+                2
+            )
+    })
+
+
+# ==========================
+# HISTORY
+# ==========================
+
+@app.route("/history")
+def history():
+
+    df = load_data()
+
+    recent = df.tail(365)
+
+    history = []
+
+    for _, row in recent.iterrows():
+
+        history.append({
+
+            "date":
+                str(row["Date"]),
+
+            "priceUSD":
+                round(
+                    row["Gold"],
+                    2
+                ),
+
+            "priceINR":
+                round(
+                    row["Gold"] *
+                    row["USDINR"] *
+                    10 /
+                    31.1035,
+                    2
+                )
+        })
+
+    return jsonify(history)
+
+
+# ==========================
+# HEALTH
+# ==========================
+
+@app.route("/")
+def home():
+
+    return jsonify({
+        "status": "running",
+        "project": "Om Gold Intelligence"
     })
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        debug=True
+    )   
