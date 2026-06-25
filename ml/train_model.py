@@ -212,20 +212,22 @@ r2 = r2_score(
     predictions
 )
 
+# Ignore tiny movements (<0.1%)
+
+mask = np.abs(y_test) > 0.001
+
 direction_actual = np.sign(
-    y_test
+    y_test[mask]
 )
 
 direction_pred = np.sign(
-    predictions
+    predictions[mask]
 )
 
 direction_accuracy = (
-    (
-        direction_actual ==
-        direction_pred
-    ).mean()
-)
+    direction_actual ==
+    direction_pred
+).mean()
 
 print("\nDirection Accuracy:")
 print(
@@ -354,7 +356,20 @@ print("\nActual Statistics:")
 print(
     y_test.describe()
 )
+print("\nPositive Days:")
+print((y_test > 0).mean() * 100)
 
+print("\nNegative Days:")
+print((y_test < 0).mean() * 100)
+comparison["Actual_Dir"] = np.sign(comparison["Actual"])
+comparison["Pred_Dir"] = np.sign(comparison["Predicted"])
+
+print(
+    comparison[
+        comparison["Actual_Dir"] !=
+        comparison["Pred_Dir"]
+    ]
+)
 # ==========================
 # SAVE MODEL
 # ==========================

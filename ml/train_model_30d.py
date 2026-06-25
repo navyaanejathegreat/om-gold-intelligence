@@ -29,7 +29,7 @@ df = pd.read_csv(data_path)
 df["Date"] = pd.to_datetime(df["Date"])
 
 df = df[
-    df["Date"] >= "2022-01-01"
+    df["Date"] >= "2022  -01-01"
 ]
 
 

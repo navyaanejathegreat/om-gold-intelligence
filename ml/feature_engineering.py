@@ -55,6 +55,25 @@ macd = ta.trend.MACD(
 )
 
 df["MACD"] = macd.macd()
+# Bollinger Bands
+
+bb = ta.volatility.BollingerBands(
+    close=df["Gold"],
+    window=20,
+    window_dev=2
+)
+
+df["BB_High"] = (
+    bb.bollinger_hband()
+)
+
+df["BB_Low"] = (
+    bb.bollinger_lband()
+)
+
+df["BB_Width"] = (
+    bb.bollinger_wband()
+)
 
 # ==================================
 # Lag Features
@@ -95,6 +114,9 @@ df["Gold_MA_200"] = (
     .rolling(200)
     .mean()
 )
+df["Gold_MA_365"] = (
+    df["Gold"].rolling(365).mean()
+)
 
 # ==================================
 # Returns
@@ -104,6 +126,9 @@ df["Return_1"] = df["Gold"].pct_change(1)
 df["Return_3"] = df["Gold"].pct_change(3)
 df["Return_7"] = df["Gold"].pct_change(7)
 df["Return_14"] = df["Gold"].pct_change(14)
+df["Return_30"] = df["Gold"].pct_change(30)
+df["Return_60"] = df["Gold"].pct_change(60)
+df["Return_90"] = df["Gold"].pct_change(90)
 
 # ==================================
 # Volatility
@@ -126,6 +151,20 @@ df["Volatility_14"] = (
 # ==================================
 # Trend Features
 # ==================================
+df["Trend_20"] = (
+    df["Gold"] /
+    df["Gold_MA_20"]
+)
+
+df["Trend_50"] = (
+    df["Gold"] /
+    df["Gold_MA_50"]
+)
+
+df["Trend_200"] = (
+    df["Gold"] /
+    df["Gold_MA_200"]
+)
 
 df["Gold_vs_MA20"] = (
     df["Gold"] -
@@ -140,6 +179,11 @@ df["Above_MA50"] = (
     df["Gold"] >
     df["Gold_MA_50"]
 ).astype(int)
+
+df["Gold_vs_MA365"] = (
+    df["Gold"] -
+    df["Gold_MA_365"]
+) / df["Gold_MA_365"]
 
 df["Above_MA200"] = (
     df["Gold"] >
@@ -230,6 +274,37 @@ if "TNX" in df.columns:
         df["TNX"]
         .pct_change()
     )
+    # USDINR Features
+    df["USDINR_Change"] = (
+    df["USDINR"]
+    .pct_change())
+    
+    df["USDINR_MA20"] = (
+    df["USDINR"]
+    .rolling(20)
+    .mean())
+    
+    df["USDINR_vs_MA20"] = (
+    df["USDINR"] -
+    df["USDINR_MA20"]
+) / df["USDINR_MA20"]
+    
+    df["Gold_Silver_Ratio"] = (
+    df["Gold"] /
+    df["Silver"])
+    
+# ==================================
+# Seasonality Features
+# ==================================
+
+df["Month"] = df["Date"].dt.month
+
+df["Quarter"] = df["Date"].dt.quarter
+
+df["DayOfWeek"] = (
+    df["Date"]
+    .dt.dayofweek
+)
 
 # ==================================
 # Target
@@ -239,6 +314,15 @@ print("Creating target...")
 
 print("Creating targets...")
 
+# ==================================
+# Target
+# ==================================
+
+print("Creating target...")
+
+print("Creating targets...")
+
+# 1 Day Return
 # 1 Day Return
 df["Target_1D"] = (
     df["Gold"].shift(-1) -

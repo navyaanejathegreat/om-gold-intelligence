@@ -42,18 +42,40 @@ model_30d = joblib.load(
 )
 
 # ==========================
-# METRICS
+# LOAD METRICS
 # ==========================
 
-MAE_1D = 1.57
-ACC_1D = 41.82
+metrics_1d = joblib.load(
+    os.path.join(
+        BASE_DIR,
+        "models",
+        "metrics_1d.pkl"
+    )
+)
 
-MAE_7D = 4.15
-ACC_7D = 47.27
+metrics_7d = joblib.load(
+    os.path.join(
+        BASE_DIR,
+        "models",
+        "metrics_7d.pkl"
+    )
+)
 
-MAE_30D = 8.60
-ACC_30D = 40.45
+metrics_30d = joblib.load(
+    os.path.join(
+        BASE_DIR,
+        "models",
+        "metrics_30d.pkl"
+    )
+)
 
+ACC_1D = metrics_1d["direction_accuracy"]
+ACC_7D = metrics_7d["direction_accuracy"]
+ACC_30D = metrics_30d["direction_accuracy"]
+
+MAE_1D = metrics_1d["mae"]
+MAE_7D = metrics_7d["mae"]
+MAE_30D = metrics_30d["mae"]
 
 # ==========================
 # CONFIDENCE LABEL
