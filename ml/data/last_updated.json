@@ -1,0 +1,9 @@
+{
+  "latest_data_date": "2026-07-06",
+  "checked_at": "2026-07-07T15:42:01.703209",
+  "age_days": 1,
+  "is_stale": false,
+  "rows_before_dropna": 4304,
+  "rows_after_dropna": 3908,
+  "feature_build_completed_at": "2026-07-07T15:42:02.111501"
+}
