@@ -1,8 +1,25 @@
 {
-    "last_updated": "06-07-2026 12:08:43",
-    "last_updated_iso": "2026-07-06T12:08:43.192674",
-    "status": "skipped_already_fresh",
-    "skipped": true,
-    "data_age_days_before_run": 0,
-    "steps_run": []
+    "last_updated": "20-07-2026 15:27:36",
+    "last_updated_iso": "2026-07-20T15:27:36.315170",
+    "status": "failed",
+    "skipped": false,
+    "data_age_days_before_run": 14,
+    "steps_run": [
+        {
+            "script": "data_collection.py",
+            "duration_seconds": 15.4,
+            "status": "success"
+        },
+        {
+            "script": "feature_engineering.py",
+            "duration_seconds": 1.2,
+            "status": "success"
+        },
+        {
+            "script": "train_model.py",
+            "status": "failed",
+            "error": "train_model.py failed after 12.6s (exit code 1)."
+        }
+    ],
+    "error": "train_model.py failed after 12.6s (exit code 1)."
 }
